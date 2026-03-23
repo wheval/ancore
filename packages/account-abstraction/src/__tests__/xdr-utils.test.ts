@@ -20,10 +20,8 @@ import {
   sessionKeyToScVal,
 } from '../xdr-utils';
 
-const OWNER_ADDRESS =
-  'GCM5WPR4DDR24FSAX5LIEM4J7AI3KOWJYANSXEPKYXCSZOTAYXE75AFN';
-const CONTRACT_ADDRESS =
-  'CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE';
+const OWNER_ADDRESS = 'GCM5WPR4DDR24FSAX5LIEM4J7AI3KOWJYANSXEPKYXCSZOTAYXE75AFN';
+const CONTRACT_ADDRESS = 'CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE';
 
 describe('account abstraction XDR helpers', () => {
   it('round-trips initialize args', () => {
@@ -99,9 +97,7 @@ describe('account abstraction XDR helpers', () => {
   });
 
   it('decodes owner and nonce results', () => {
-    expect(decodeOwnerResult(new Address(OWNER_ADDRESS).toScVal())).toBe(
-      OWNER_ADDRESS
-    );
+    expect(decodeOwnerResult(new Address(OWNER_ADDRESS).toScVal())).toBe(OWNER_ADDRESS);
     expect(decodeNonceResult(xdr.ScVal.scvU64(new xdr.Uint64(42n)))).toBe(42);
   });
 
