@@ -12,21 +12,21 @@ import {
 } from '@stellar/stellar-sdk';
 import { mapContractError } from './errors';
 import {
-  addressToScVal,
-  permissionsToScVal,
-  publicKeyToBytes32ScVal,
-  scValToAddress,
-  scValToOptionalSessionKey,
-  scValToU64,
-  symbolToScVal,
-  u64ToScVal,
+  decodeNonceResult,
+  decodeOwnerResult,
+  decodeSessionKeyResult,
+  encodeAddSessionKeyArgs,
+  encodeExecuteArgs,
+  encodeGetSessionKeyArgs,
+  encodeInitializeArgs,
+  encodeRevokeSessionKeyArgs,
 } from './xdr-utils';
 
 /** Options for read calls (getOwner, getNonce, getSessionKey) when using a server */
 export interface AccountContractReadOptions {
   server: {
     getAccount(accountId: string): Promise<{ id: string; sequence: string }>;
-    simulateTransaction(tx: unknown): Promise<unknown>;
+    simulateTransaction(tx: unknown): Promise<SimulationResponse>;
   };
   sourceAccount: string;
   /** Network passphrase (e.g. Networks.TESTNET); required for building the simulation tx */
@@ -37,6 +37,14 @@ export interface AccountContractReadOptions {
 export interface InvocationArgs {
   method: string;
   args: xdr.ScVal[];
+}
+
+interface SimulationResponse {
+  error?: string;
+  message?: string;
+  result?: {
+    retval?: xdr.ScVal;
+  };
 }
 
 /**
@@ -59,7 +67,7 @@ export class AccountContract {
   initialize(owner: string): InvocationArgs {
     return {
       method: 'initialize',
-      args: [addressToScVal(owner)],
+      args: encodeInitializeArgs({ owner }),
     };
   }
 
@@ -75,12 +83,12 @@ export class AccountContract {
   ): InvocationArgs {
     return {
       method: 'execute',
-      args: [
-        addressToScVal(to),
-        symbolToScVal(fn),
-        xdr.ScVal.scvVec(args),
-        u64ToScVal(expectedNonce),
-      ],
+      args: encodeExecuteArgs({
+        to,
+        functionName: fn,
+        args,
+        expectedNonce,
+      }),
     };
   }
 
@@ -95,11 +103,11 @@ export class AccountContract {
   ): InvocationArgs {
     return {
       method: 'add_session_key',
-      args: [
-        publicKeyToBytes32ScVal(publicKey),
-        u64ToScVal(expiresAt),
-        permissionsToScVal(permissions),
-      ],
+      args: encodeAddSessionKeyArgs({
+        publicKey,
+        expiresAt,
+        permissions,
+      }),
     };
   }
 
@@ -109,7 +117,7 @@ export class AccountContract {
   revokeSessionKey(publicKey: string | Uint8Array): InvocationArgs {
     return {
       method: 'revoke_session_key',
-      args: [publicKeyToBytes32ScVal(publicKey)],
+      args: encodeRevokeSessionKeyArgs({ publicKey }),
     };
   }
 
@@ -120,7 +128,7 @@ export class AccountContract {
   getSessionKeyInvocation(publicKey: string | Uint8Array): InvocationArgs {
     return {
       method: 'get_session_key',
-      args: [publicKeyToBytes32ScVal(publicKey)],
+      args: encodeGetSessionKeyArgs({ publicKey }),
     };
   }
 
@@ -157,7 +165,7 @@ export class AccountContract {
    */
   async getOwner(options: AccountContractReadOptions): Promise<string> {
     const result = await this.simulateRead('get_owner', [], options);
-    return scValToAddress(result);
+    return decodeOwnerResult(result);
   }
 
   /**
@@ -165,7 +173,7 @@ export class AccountContract {
    */
   async getNonce(options: AccountContractReadOptions): Promise<number> {
     const result = await this.simulateRead('get_nonce', [], options);
-    return scValToU64(result);
+    return decodeNonceResult(result);
   }
 
   /**
@@ -178,10 +186,10 @@ export class AccountContract {
   ): Promise<SessionKey | null> {
     const result = await this.simulateRead(
       'get_session_key',
-      [publicKeyToBytes32ScVal(publicKey)],
+      encodeGetSessionKeyArgs({ publicKey }),
       options
     );
-    return scValToOptionalSessionKey(result);
+    return decodeSessionKeyResult(result);
   }
 
   /**
@@ -211,7 +219,7 @@ export class AccountContract {
 
     const raw = txBuilder.build();
 
-    const sim: any = await server.simulateTransaction(raw);
+    const sim = await server.simulateTransaction(raw);
 
     if (sim && typeof sim === 'object' && ('error' in sim || 'message' in sim)) {
       const errMsg =
@@ -221,7 +229,7 @@ export class AccountContract {
       throw mapContractError(String(errMsg), sim);
     }
 
-    const result = (sim as any)?.result?.retval as xdr.ScVal | undefined;
+    const result = sim.result?.retval;
     if (result === undefined) {
       throw mapContractError('No return value from simulation', sim);
     }
