@@ -17,6 +17,16 @@ module.exports = [
           jsx: true,
         },
       },
+      globals: {
+        console: 'readonly',
+        navigator: 'readonly',
+        setTimeout: 'readonly',
+        HTMLInputElement: 'readonly',
+        HTMLButtonElement: 'readonly',
+        HTMLDivElement: 'readonly',
+        HTMLParagraphElement: 'readonly',
+        HTMLHeadingElement: 'readonly',
+      },
     },
     plugins: {
       '@typescript-eslint': tseslint,
@@ -29,11 +39,31 @@ module.exports = [
       ...reactHooks.configs.recommended.rules,
       'react/react-in-jsx-scope': 'off', // Not needed in React 18+
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-undef': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
     },
     settings: {
       react: {
         version: 'detect',
       },
+    },
+  },
+  {
+    files: ['src/**/*.test.tsx', 'src/**/*.test.ts'],
+    languageOptions: {
+      globals: {
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        vi: 'readonly',
+      },
+    },
+  },
+  {
+    files: ['src/**/*.stories.tsx'],
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
     },
   },
 ];

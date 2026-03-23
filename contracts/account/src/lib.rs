@@ -135,17 +135,20 @@ impl AncoreAccount {
         to: Address,
         function: soroban_sdk::Symbol,
         _args: Vec<soroban_sdk::Val>,
+        expected_nonce: u64,
     ) -> Result<bool, ContractError> {
         // TODO: Implement signature validation
-        // TODO: Check nonce
         // TODO: Execute call
-        // TODO: Increment nonce
 
         let owner = Self::get_owner(env.clone())?;
         owner.require_auth();
 
         // Get nonce before incrementing
         let current_nonce: u64 = Self::get_nonce(env.clone())?;
+
+        if current_nonce != expected_nonce {
+            return Err(ContractError::InvalidNonce);
+        }
 
         // Increment nonce
         env.storage().instance().set(&DataKey::Nonce, &(current_nonce + 1));
@@ -352,7 +355,7 @@ mod test {
         let function = soroban_sdk::Symbol::new(&env, "transfer");
         let args = Vec::new(&env);
 
-        client.execute(&to, &function, &args);
+        client.execute(&to, &function, &args, &0u64);
 
         // Find the executed event (skip the initialize event)
         let events_list = env.events().all();
@@ -385,7 +388,7 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "Invalid nonce")]
+    #[should_panic(expected = "Error(Contract, #4)")]
     fn test_execute_rejects_invalid_nonce() {
         let env = Env::default();
         let contract_id = env.register_contract(None, AncoreAccount);
