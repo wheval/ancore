@@ -443,7 +443,7 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "Error(Contract, #4)")]
+    #[should_panic(expected = "Invalid nonce")]
     fn test_execute_rejects_invalid_nonce() {
         let env = Env::default();
         let contract_id = env.register_contract(None, AncoreAccount);
