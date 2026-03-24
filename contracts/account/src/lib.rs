@@ -88,6 +88,11 @@ pub enum DataKey {
     SessionKey(BytesN<32>),
 }
 
+const DAY_IN_LEDGERS: u32 = 17280; // 24 hours * 60 min * 60 sec / 5 sec per ledger
+const INSTANCE_BUMP_AMOUNT: u32 = 30 * DAY_IN_LEDGERS; // 30 days
+const INSTANCE_BUMP_THRESHOLD: u32 = 15 * DAY_IN_LEDGERS; // 15 days
+
+
 #[contract]
 pub struct AncoreAccount;
 
@@ -101,6 +106,9 @@ impl AncoreAccount {
 
         env.storage().instance().set(&DataKey::Owner, &owner);
         env.storage().instance().set(&DataKey::Nonce, &0u64);
+
+        // Extend instance TTL
+        env.storage().instance().extend_ttl(INSTANCE_BUMP_THRESHOLD, INSTANCE_BUMP_AMOUNT);
 
         // Emit initialized event
         env.events().publish((events::initialized(&env),), owner);
@@ -145,6 +153,11 @@ impl AncoreAccount {
 
         // Get nonce before incrementing
         let current_nonce: u64 = Self::get_nonce(env.clone())?;
+        
+        if expected_nonce != current_nonce {
+            panic!("Invalid nonce");
+        }
+
 
         if current_nonce != expected_nonce {
             return Err(ContractError::InvalidNonce);
@@ -152,6 +165,9 @@ impl AncoreAccount {
 
         // Increment nonce
         env.storage().instance().set(&DataKey::Nonce, &(current_nonce + 1));
+
+        // Extend instance TTL to keep contract alive
+        env.storage().instance().extend_ttl(INSTANCE_BUMP_THRESHOLD, INSTANCE_BUMP_AMOUNT);
 
         // Emit executed event with transaction details
         env.events()
@@ -179,6 +195,8 @@ impl AncoreAccount {
         env.storage()
             .persistent()
             .set(&DataKey::SessionKey(public_key.clone()), &session_key);
+
+        Self::extend_session_key_ttl(&env, &public_key, expires_at);
 
         // Emit session_key_added event
         env.events()
@@ -208,6 +226,43 @@ impl AncoreAccount {
         env.storage()
             .persistent()
             .get(&DataKey::SessionKey(public_key))
+    }
+
+    /// Refresh the TTL of a session key
+    pub fn refresh_session_key_ttl(env: Env, public_key: BytesN<32>) -> Result<(), ContractError> {
+        let session_key = Self::get_session_key(env.clone(), public_key.clone())
+            .ok_or(ContractError::SessionKeyNotFound)?;
+
+        Self::extend_session_key_ttl(&env, &public_key, session_key.expires_at);
+
+        Ok(())
+    }
+
+    /// Helper to cleanly extend session key TTL
+    fn extend_session_key_ttl(env: &Env, public_key: &BytesN<32>, expires_at: u64) {
+        let current_timestamp = env.ledger().timestamp();
+        
+        // Auto-detect if expires_at is using ms vs s. ms timestamps are > 100_000_000_000
+        let expires_at_secs = if expires_at > 100_000_000_000 {
+            expires_at / 1000
+        } else {
+            expires_at
+        };
+
+        let ledgers_to_live = if expires_at_secs > current_timestamp {
+            // Using 4 seconds-per-ledger + 1 day buffer to guarantee it outlives expiry
+            ((expires_at_secs - current_timestamp) / 4) as u32 + DAY_IN_LEDGERS
+        } else {
+            DAY_IN_LEDGERS // 1 day default buffer
+        };
+        
+        let threshold = ledgers_to_live.saturating_sub(DAY_IN_LEDGERS / 2); // refresh when less than half day buffer
+
+        env.storage().persistent().extend_ttl(
+            &DataKey::SessionKey(public_key.clone()),
+            threshold,
+            ledgers_to_live,
+        );
     }
 }
 
@@ -430,5 +485,29 @@ mod test {
         let _result = client.execute(&to, &function, &args, &0u64);
 
         assert_eq!(client.get_nonce(), 1);
+    }
+    
+    #[test]
+    fn test_refresh_session_key_ttl() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, AncoreAccount);
+        let client = AncoreAccountClient::new(&env, &contract_id);
+
+        let owner = Address::generate(&env);
+        client.initialize(&owner);
+
+        env.mock_all_auths();
+
+        let session_pk = BytesN::from_array(&env, &[1u8; 32]);
+        let expires_at = env.ledger().timestamp() + 10000;
+        let permissions = Vec::new(&env);
+
+        client.add_session_key(&session_pk, &expires_at, &permissions);
+        
+        // This validates the function compiles and runs successfully
+        client.refresh_session_key_ttl(&session_pk);
+        
+        let session_key = client.get_session_key(&session_pk);
+        assert!(session_key.is_some());
     }
 }
