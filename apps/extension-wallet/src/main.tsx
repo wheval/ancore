@@ -7,7 +7,7 @@ import './index.css';
 
 function App() {
   const [view, setView] = useState<'receive' | 'settings'>('receive');
-  const [network, setNetwork] = useState<'mainnet' | 'testnet' | 'futurenet'>('testnet');
+  const [network] = useState<'mainnet' | 'testnet' | 'futurenet'>('testnet');
 
   return (
     <div className="w-[360px] min-h-screen bg-background mx-auto shadow-xl flex flex-col items-center p-6 gap-4">

@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { cn } from '@ancore/ui-kit';
 
