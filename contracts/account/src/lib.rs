@@ -353,26 +353,6 @@ impl AncoreAccount {
             ledgers_to_live,
         );
     }
-
-    /// Upgrade the contract
-    pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
-        let owner = Self::get_owner(env.clone())?;
-        owner.require_auth();
-
-        let current_version: u32 = env.storage().instance().get(&DataKey::Version).unwrap_or(0);
-        env.storage().instance().set(&DataKey::Version, &(current_version + 1));
-        
-        env.deployer().update_current_contract_wasm(new_wasm_hash);
-        
-        env.storage().instance().extend_ttl(INSTANCE_BUMP_THRESHOLD, INSTANCE_BUMP_AMOUNT);
-
-        Ok(())
-    }
-
-    /// Get contract version
-    pub fn get_version(env: Env) -> u32 {
-        env.storage().instance().get(&DataKey::Version).unwrap_or(0)
-    }
 }
 
 #[cfg(test)]
