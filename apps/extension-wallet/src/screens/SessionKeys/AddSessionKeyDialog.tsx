@@ -34,7 +34,7 @@ export const AddSessionKeyDialog: React.FC<AddSessionKeyDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} title="Add Session Key">
+    <Dialog isOpen={open} onClose={onClose}>
       <div className="p-4">
         <label className="block mb-2 font-medium">Key Name</label>
         <Input

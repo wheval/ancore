@@ -3,9 +3,9 @@ import { SessionKeysScreen } from '../SessionKeysScreen';
 import { useSessionKeys } from '../../../hooks/useSessionKeys';
 import { vi } from 'vitest';
 
-jest.mock('../../../hooks/useSessionKeys');
+vi.mock('../../../hooks/useSessionKeys');
 
-const mockUseSessionKeys = useSessionKeys as jest.MockedFunction<typeof useSessionKeys>;
+const mockUseSessionKeys = useSessionKeys as ReturnType<typeof vi.fn>;
 
 describe('SessionKeysScreen', () => {
   beforeEach(() => {

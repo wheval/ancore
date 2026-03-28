@@ -37,22 +37,20 @@ export const SessionKeysScreen: React.FC = () => {
           <p>No active session keys.</p>
         ) : (
           <ul>
-            {sessionKeys.map(
-              (key: { id: string; name: string; permissions: string[]; expiry: string }) => (
-                <li key={key.id} className="mb-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">🔑 {key.name}</p>
-                      <p className="text-sm">Permissions: {key.permissions.join(', ')}</p>
-                      <p className="text-sm">Expires: {key.expiry}</p>
-                    </div>
-                    <button onClick={() => handleRevoke(key.id)} className="text-red-500">
-                      Revoke
-                    </button>
+            {sessionKeys.map((key) => (
+              <li key={key.publicKey} className="mb-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium">🔑 {key.label || 'Unnamed Key'}</p>
+                    <p className="text-sm">Permissions: {key.permissions.join(', ')}</p>
+                    <p className="text-sm">Expires: {new Date(key.expiresAt).toLocaleString()}</p>
                   </div>
-                </li>
-              )
-            )}
+                  <button onClick={() => handleRevoke(key.publicKey)} className="text-red-500">
+                    Revoke
+                  </button>
+                </div>
+              </li>
+            ))}
           </ul>
         )}
       </section>
@@ -61,7 +59,13 @@ export const SessionKeysScreen: React.FC = () => {
         + Add Session Key
       </button>
 
-      <AddSessionKeyDialog open={isDialogOpen} onClose={() => setDialogOpen(false)} />
+      <AddSessionKeyDialog
+        open={isDialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onSave={async (key) => {
+          console.log('Saving key:', key);
+        }}
+      />
     </div>
   );
 };

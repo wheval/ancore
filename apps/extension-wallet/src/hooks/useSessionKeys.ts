@@ -1,33 +1,42 @@
 import { useState, useEffect } from 'react';
-import { account } from '@ancore/core-sdk';
+import { AccountContract, SessionKey } from '@ancore/account-abstraction';
 
-interface SessionKey {
-  id: string;
-  name: string;
-  permissions: string[];
-  expiry: string;
-}
+const accountContract = new AccountContract('your-account-contract-id');
 
 export const useSessionKeys = () => {
   const [sessionKeys, setSessionKeys] = useState<SessionKey[]>([]);
 
   useEffect(() => {
     const fetchSessionKeys = async () => {
-      const keys = await account.getSessionKeys();
-      setSessionKeys(keys);
+      const key = await accountContract.getSessionKey('your-public-key', {
+        server: {
+          getAccount: async () => ({ id: 'id', sequence: 'sequence' }),
+          simulateTransaction: async () => ({}),
+        },
+        sourceAccount: 'source-account',
+      });
+      setSessionKeys(key ? [key] : []);
     };
 
     fetchSessionKeys();
   }, []);
 
-  const addSessionKey = async (key: { name: string; permissions: string[]; expiry: string }) => {
-    const newKey = await account.addSessionKey(key);
+  const addSessionKey = async (key: {
+    publicKey: string;
+    permissions: number[];
+    expiresAt: number;
+  }) => {
+    const newKey: SessionKey = {
+      publicKey: key.publicKey,
+      permissions: key.permissions,
+      expiresAt: key.expiresAt,
+    };
     setSessionKeys((prevKeys) => [...prevKeys, newKey]);
   };
 
-  const revokeSessionKey = async (keyId: string) => {
-    await account.revokeSessionKey(keyId);
-    setSessionKeys((prevKeys) => prevKeys.filter((key) => key.id !== keyId));
+  const revokeSessionKey = async (publicKey: string) => {
+    await accountContract.revokeSessionKey(publicKey);
+    setSessionKeys((prevKeys) => prevKeys.filter((key) => key.publicKey !== publicKey));
   };
 
   return {

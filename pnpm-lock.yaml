@@ -37,6 +37,9 @@ importers:
 
   apps/extension-wallet:
     dependencies:
+      '@ancore/account-abstraction':
+        specifier: workspace:*
+        version: link:../../packages/account-abstraction
       '@ancore/core-sdk':
         specifier: workspace:*
         version: link:../../packages/core-sdk
