@@ -119,7 +119,6 @@ const INSTANCE_BUMP_THRESHOLD: u32 = 15 * DAY_IN_LEDGERS; // 15 days
 /// Without this bit set, execute() returns InsufficientPermission error.
 pub const PERMISSION_EXECUTE: u32 = 1;
 
-
 #[contract]
 pub struct AncoreAccount;
 
@@ -170,6 +169,7 @@ impl AncoreAccount {
     /// - Caller must be owner OR provide a valid session key signature
     /// - `expected_nonce` must match current nonce (replay protection)
     /// - Nonce is incremented before invocation (checks-effects-interactions)
+    #[allow(clippy::too_many_arguments)]
     pub fn execute(
         env: Env,
         _caller: CallerIdentity,
