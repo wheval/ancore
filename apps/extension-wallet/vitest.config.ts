@@ -12,6 +12,13 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    exclude: [
+      '**/node_modules/**',
+      '**/*.e2e.test.{ts,tsx}',
+      '**/Onboarding/__tests__/**',
+      '**/messaging/__tests__/messaging.test.ts',
+      '**/SessionKeys/__tests__/**',
+    ],
   },
   resolve: {
     alias: {

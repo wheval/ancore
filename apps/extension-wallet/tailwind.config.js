@@ -1,9 +1,11 @@
-import tailwindcssAnimate from 'tailwindcss-animate';
-
 /** @type {import('tailwindcss').Config} */
-const config = {
+export default {
   darkMode: ['class'],
-  content: ['./index.html', './src/**/*.{ts,tsx}', '../../packages/ui-kit/src/**/*.{ts,tsx}'],
+  content: [
+    './src/popup/index.html',
+    './src/**/*.{ts,tsx}',
+    '../../packages/ui-kit/src/**/*.{ts,tsx}',
+  ],
   theme: {
     extend: {
       colors: {
@@ -44,7 +46,5 @@ const config = {
       },
     },
   },
-  plugins: [tailwindcssAnimate],
+  plugins: [require('tailwindcss-animate')],
 };
-
-export default config;

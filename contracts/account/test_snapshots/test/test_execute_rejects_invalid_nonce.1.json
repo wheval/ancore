@@ -60,6 +60,18 @@
                         "val": {
                           "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                         }
+                      },
+                      {
+                        "key": {
+                          "vec": [
+                            {
+                              "symbol": "Version"
+                            }
+                          ]
+                        },
+                        "val": {
+                          "u32": 1
+                        }
                       }
                     ]
                   }
@@ -183,6 +195,13 @@
             "data": {
               "vec": [
                 {
+                  "vec": [
+                    {
+                      "symbol": "Owner"
+                    }
+                  ]
+                },
+                {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
                 {
@@ -191,9 +210,13 @@
                 {
                   "vec": []
                 },
+                "void",
                 {
                   "u64": 1
-                }
+                },
+                "void",
+                "void",
+                "void"
               ]
             }
           }
@@ -279,6 +302,13 @@
                 {
                   "vec": [
                     {
+                      "vec": [
+                        {
+                          "symbol": "Owner"
+                        }
+                      ]
+                    },
+                    {
                       "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                     },
                     {
@@ -287,9 +317,13 @@
                     {
                       "vec": []
                     },
+                    "void",
                     {
                       "u64": 1
-                    }
+                    },
+                    "void",
+                    "void",
+                    "void"
                   ]
                 }
               ]

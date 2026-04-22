@@ -3,25 +3,25 @@
  * Provides a TypeScript API for initialize, execute, session keys, and read methods.
  */
 
-import type { SessionKey } from '@ancore/types';
 import { Account, Contract, TransactionBuilder, xdr } from '@stellar/stellar-sdk';
-import { mapContractError } from './errors';
+import { type ContractErrorContext, mapContractError } from './errors';
+import type { SessionKey } from './session-key';
 import {
-  decodeNonceResult,
-  decodeOwnerResult,
-  decodeSessionKeyResult,
-  encodeAddSessionKeyArgs,
-  encodeExecuteArgs,
-  encodeGetSessionKeyArgs,
-  encodeInitializeArgs,
-  encodeRevokeSessionKeyArgs,
+  addressToScVal,
+  permissionsToScVal,
+  publicKeyToBytes32ScVal,
+  scValToAddress,
+  scValToOptionalSessionKey,
+  scValToU64,
+  symbolToScVal,
+  u64ToScVal,
 } from './xdr-utils';
 
 /** Options for read calls (getOwner, getNonce, getSessionKey) when using a server */
 export interface AccountContractReadOptions {
   server: {
     getAccount(accountId: string): Promise<{ id: string; sequence: string }>;
-    simulateTransaction(tx: unknown): Promise<SimulationResponse>;
+    simulateTransaction(tx: unknown): Promise<unknown>;
   };
   sourceAccount: string;
   /** Network passphrase (e.g. Networks.TESTNET); required for building the simulation tx */
@@ -34,7 +34,12 @@ export interface InvocationArgs {
   args: xdr.ScVal[];
 }
 
-interface SimulationResponse {
+export interface AccountContractWriteResult {
+  invocation: InvocationArgs;
+  operation: ReturnType<AccountContract['call']>;
+}
+
+interface SimulationErrorResponse {
   error?: string;
   message?: string;
   result?: {
@@ -62,7 +67,7 @@ export class AccountContract {
   initialize(owner: string): InvocationArgs {
     return {
       method: 'initialize',
-      args: encodeInitializeArgs({ owner }),
+      args: [addressToScVal(owner)],
     };
   }
 
@@ -73,12 +78,12 @@ export class AccountContract {
   execute(to: string, fn: string, args: xdr.ScVal[], expectedNonce: number): InvocationArgs {
     return {
       method: 'execute',
-      args: encodeExecuteArgs({
-        to,
-        functionName: fn,
-        args,
-        expectedNonce,
-      }),
+      args: [
+        addressToScVal(to),
+        symbolToScVal(fn),
+        xdr.ScVal.scvVec(args),
+        u64ToScVal(expectedNonce),
+      ],
     };
   }
 
@@ -90,15 +95,33 @@ export class AccountContract {
     publicKey: string | Uint8Array,
     permissions: number[],
     expiresAt: number
-  ): InvocationArgs {
-    return {
+  ): InvocationArgs;
+  addSessionKey(
+    publicKey: string | Uint8Array,
+    permissions: number[],
+    expiresAt: number,
+    options: AccountContractReadOptions
+  ): Promise<AccountContractWriteResult>;
+  addSessionKey(
+    publicKey: string | Uint8Array,
+    permissions: number[],
+    expiresAt: number,
+    options?: AccountContractReadOptions
+  ): InvocationArgs | Promise<AccountContractWriteResult> {
+    const invocation = {
       method: 'add_session_key',
-      args: encodeAddSessionKeyArgs({
-        publicKey,
-        expiresAt,
-        permissions,
-      }),
+      args: [
+        publicKeyToBytes32ScVal(publicKey),
+        u64ToScVal(expiresAt),
+        permissionsToScVal(permissions),
+      ],
     };
+
+    if (!options) {
+      return invocation;
+    }
+
+    return this.prepareWriteInvocation(invocation, options);
   }
 
   /**
@@ -107,7 +130,7 @@ export class AccountContract {
   revokeSessionKey(publicKey: string | Uint8Array): InvocationArgs {
     return {
       method: 'revoke_session_key',
-      args: encodeRevokeSessionKeyArgs({ publicKey }),
+      args: [publicKeyToBytes32ScVal(publicKey)],
     };
   }
 
@@ -118,7 +141,7 @@ export class AccountContract {
   getSessionKeyInvocation(publicKey: string | Uint8Array): InvocationArgs {
     return {
       method: 'get_session_key',
-      args: encodeGetSessionKeyArgs({ publicKey }),
+      args: [publicKeyToBytes32ScVal(publicKey)],
     };
   }
 
@@ -155,7 +178,7 @@ export class AccountContract {
    */
   async getOwner(options: AccountContractReadOptions): Promise<string> {
     const result = await this.simulateRead('get_owner', [], options);
-    return decodeOwnerResult(result);
+    return scValToAddress(result);
   }
 
   /**
@@ -163,7 +186,7 @@ export class AccountContract {
    */
   async getNonce(options: AccountContractReadOptions): Promise<number> {
     const result = await this.simulateRead('get_nonce', [], options);
-    return decodeNonceResult(result);
+    return scValToU64(result);
   }
 
   /**
@@ -176,10 +199,31 @@ export class AccountContract {
   ): Promise<SessionKey | null> {
     const result = await this.simulateRead(
       'get_session_key',
-      encodeGetSessionKeyArgs({ publicKey }),
-      options
+      [publicKeyToBytes32ScVal(publicKey)],
+      options,
+      {
+        sessionPublicKey: typeof publicKey === 'string' ? publicKey : undefined,
+      }
     );
-    return decodeSessionKeyResult(result);
+    return scValToOptionalSessionKey(result);
+  }
+
+  /**
+   * Build and simulate a write invocation so contract errors are surfaced as typed errors.
+   */
+  private async prepareWriteInvocation(
+    invocation: InvocationArgs,
+    options: AccountContractReadOptions
+  ): Promise<AccountContractWriteResult> {
+    const operation = this.buildInvokeOperation(invocation);
+    await this.simulateContractCall(invocation.method, invocation.args, options, {
+      requireResult: false,
+    });
+
+    return {
+      invocation,
+      operation,
+    };
   }
 
   /**
@@ -189,8 +233,29 @@ export class AccountContract {
   private async simulateRead(
     method: string,
     args: xdr.ScVal[],
-    options: AccountContractReadOptions
+    options: AccountContractReadOptions,
+    context: ContractErrorContext = {}
   ): Promise<xdr.ScVal> {
+    const result = await this.simulateContractCall(method, args, options, {
+      requireResult: true,
+      context,
+    });
+
+    return result as xdr.ScVal;
+  }
+
+  private async simulateContractCall(
+    method: string,
+    args: xdr.ScVal[],
+    options: AccountContractReadOptions,
+    {
+      requireResult,
+      context = {},
+    }: {
+      requireResult: boolean;
+      context?: ContractErrorContext;
+    }
+  ): Promise<xdr.ScVal | undefined> {
     const op = this.contract.call(method, ...args);
     const { server, sourceAccount } = options;
 
@@ -206,19 +271,19 @@ export class AccountContract {
 
     const raw = txBuilder.build();
 
-    const sim = await server.simulateTransaction(raw);
+    const sim = (await server.simulateTransaction(raw)) as SimulationErrorResponse;
 
     if (sim && typeof sim === 'object' && ('error' in sim || 'message' in sim)) {
       const errMsg =
         (sim as { error?: string }).error ??
         (sim as { message?: string }).message ??
         'Simulation failed';
-      throw mapContractError(String(errMsg), sim);
+      throw mapContractError(String(errMsg), sim, context);
     }
 
     const result = sim.result?.retval;
-    if (result === undefined) {
-      throw mapContractError('No return value from simulation', sim);
+    if (requireResult && result === undefined) {
+      throw mapContractError('No return value from simulation', sim, context);
     }
     return result;
   }
