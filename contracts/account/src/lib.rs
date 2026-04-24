@@ -182,6 +182,7 @@ impl AncoreAccount {
     /// # Security
     /// - Caller must be owner OR provide a valid session key signature
     /// - `expected_nonce` must match current nonce (replay protection)
+    /// - Session key signatures are bound to exact call parameters (to, function, args, nonce)
     /// - Nonce is incremented before invocation (checks-effects-interactions)
     pub fn execute(
         env: Env,
@@ -219,6 +220,13 @@ impl AncoreAccount {
 
             let sig = signature.ok_or(ContractError::InvalidSignature)?;
             let payload = signature_payload.ok_or(ContractError::InvalidSignature)?;
+
+            // CRITICAL: Bind signature to actual call parameters to prevent replay attacks
+            // The signature must be for the exact (to, function, args, nonce) tuple being executed
+            let expected_payload = Self::create_signature_payload(&env, &to, &function, &args, expected_nonce);
+            if payload != expected_payload {
+                return Err(ContractError::InvalidSignature);
+            }
 
             // Verify signature using ed25519
             env.crypto().ed25519_verify(&session_pk, &payload, &sig);
@@ -441,6 +449,24 @@ impl AncoreAccount {
             threshold,
             ledgers_to_live,
         );
+    }
+
+    /// Create canonical signature payload for replay protection.
+    /// This MUST match the exact format used by test helpers for signature verification.
+    /// Critical security: Binds signatures to specific (to, function, args, nonce) tuples.
+    fn create_signature_payload(
+        env: &Env,
+        to: &Address,
+        function: &soroban_sdk::Symbol,
+        args: &Vec<Val>,
+        nonce: u64,
+    ) -> soroban_sdk::Bytes {
+        let mut payload = soroban_sdk::Bytes::new(env);
+        payload.append(&to.clone().to_xdr(env));
+        payload.append(&function.clone().to_xdr(env));
+        payload.append(&args.clone().to_xdr(env));
+        payload.append(&nonce.to_xdr(env));
+        payload
     }
 }
 
@@ -1327,6 +1353,109 @@ mod test {
 
         let res_u64: u64 = soroban_sdk::FromVal::from_val(&env, &result);
         assert_eq!(res_u64, 0);
+    }
+
+    #[test]
+    fn test_add_session_key_zero_expiry_rejected() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, AncoreAccount);
+        let client = AncoreAccountClient::new(&env, &contract_id);
+
+        let owner = Address::generate(&env);
+        client.initialize(&owner);
+        env.mock_all_auths();
+
+        let session_pk = BytesN::from_array(&env, &[1u8; 32]);
+        let permissions = Vec::new(&env);
+
+        let result = client.try_add_session_key(&session_pk, &0u64, &permissions);
+
+        assert_eq!(result, Err(Ok(ContractError::InvalidExpiration)));
+    }
+
+    #[test]
+    fn test_add_session_key_nonzero_expiry_succeeds() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, AncoreAccount);
+        let client = AncoreAccountClient::new(&env, &contract_id);
+
+        let owner = Address::generate(&env);
+        client.initialize(&owner);
+        env.mock_all_auths();
+        client.add_session_key(&session_pk, &expires_at, &permissions);
+
+        // Create valid signatures for different nonces
+        let (sig_nonce_0, payload_nonce_0) = sign_payload(&env, &signing_key, &callee_id, &function, &args, 0);
+        let (sig_nonce_1, payload_nonce_1) = sign_payload(&env, &signing_key, &callee_id, &function, &args, 1);
+
+        // 1. SUCCESS: Execute with nonce 0 (owner path)
+        env.mock_all_auths();
+        let _result = client.execute(
+            &CallerIdentity::Owner,
+            &callee_id,
+            &function,
+            &args,
+            &0u64,
+            &None,
+            &None,
+            &None,
+        );
+        assert_eq!(client.get_nonce(), 1);
+
+        // 2. REJECT: Stale nonce 0 replayed with owner auth
+        env.mock_all_auths();
+        let stale_result = client.try_execute(
+            &CallerIdentity::Owner,
+            &callee_id,
+            &function,
+            &args,
+            &0u64, // Stale nonce
+            &None,
+            &None,
+            &None,
+        );
+        assert_eq!(stale_result, Err(Ok(ContractError::InvalidNonce)));
+
+        // 3. SUCCESS: Execute with nonce 1 (session key path)
+        let result = client.execute(
+            &CallerIdentity::SessionKey(session_pk.clone()),
+            &callee_id,
+            &function,
+            &args,
+            &1u64,
+            &Some(session_pk.clone()),
+            &Some(sig_nonce_1),
+            &Some(payload_nonce_1),
+        );
+        let res_u64: u64 = soroban_sdk::FromVal::from_val(&env, &result);
+        assert_eq!(res_u64, 1);
+        assert_eq!(client.get_nonce(), 2);
+
+        // 4. REJECT: Stale nonce 1 replayed with session key (even with valid signature)
+        let stale_result = client.try_execute(
+            &CallerIdentity::SessionKey(session_pk.clone()),
+            &callee_id,
+            &function,
+            &args,
+            &1u64, // Stale nonce
+            &Some(session_pk.clone()),
+            &Some(sig_nonce_1.clone()),
+            &Some(payload_nonce_1.clone()),
+        );
+        assert_eq!(stale_result, Err(Ok(ContractError::InvalidNonce)));
+
+        // 5. REJECT: Stale nonce 0 replayed with session key (old signature with stale nonce)
+        let stale_result = client.try_execute(
+            &CallerIdentity::SessionKey(session_pk.clone()),
+            &callee_id,
+            &function,
+            &args,
+            &0u64, // Stale nonce
+            &Some(session_pk.clone()),
+            &Some(sig_nonce_0),
+            &Some(payload_nonce_0),
+        );
+        assert_eq!(stale_result, Err(Ok(ContractError::InvalidNonce)));
     }
 
     #[test]
