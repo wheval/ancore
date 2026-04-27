@@ -201,6 +201,8 @@ For a deep dive into Ancore's architecture, see:
 
 These directories are intentionally kept as scaffolds to preserve architecture direction and contributor workflow without implying production completeness.
 
+For execution waves (2-3 features at a time), see `docs/product/FINANCIAL_OS_ROADMAP.md`.
+
 ## Community
 
 - **Telegram**: [Ancore TG](https://t.me/+OqlAx-gQx3M4YzJk)
