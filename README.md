@@ -33,11 +33,15 @@ ancore/
 │   └── types/                # Shared TypeScript types
 │
 ├── contracts/                # Soroban smart contracts
-│   └── account/              # Core account contract
+│   ├── account/              # Core account contract
+│   ├── validation-modules/   # Planned pluggable validation module scaffolds
+│   ├── invoice/              # Planned invoice contract scaffolds
+│   └── upgrade/              # Planned upgrade contract scaffolds
 │
 ├── services/                 # Optional infrastructure
 │   ├── relayer/              # Transaction relay service
-│   └── indexer/              # Blockchain indexer
+│   ├── indexer/              # Blockchain indexer
+│   └── ai-agent/             # Planned AI orchestration service scaffold
 │
 └── docs/                     # Documentation
     ├── architecture/         # System architecture
@@ -187,6 +191,15 @@ For a deep dive into Ancore's architecture, see:
 - [ ] Invoice system
 - [ ] AI agent integration
 - [ ] Mainnet launch
+
+### Planned module scaffolds (intentionally preserved)
+
+- `contracts/validation-modules/` - reserved for modular auth/policy contracts
+- `contracts/invoice/` - reserved for invoice/request-to-pay contracts
+- `contracts/upgrade/` - reserved for upgrade governance contracts
+- `services/ai-agent/` - reserved for AI workflow orchestration
+
+These directories are intentionally kept as scaffolds to preserve architecture direction and contributor workflow without implying production completeness.
 
 ## Community
 

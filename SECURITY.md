@@ -46,7 +46,8 @@ The following components undergo rigorous security review:
 #### Smart Contracts
 
 - `contracts/account/` - Core account logic
-- Additional contract modules are planned and tracked in the roadmap/issues
+- `contracts/validation-modules/` - Planned validation module scaffold
+- `contracts/upgrade/` - Planned upgrade module scaffold
 
 **Process**:
 

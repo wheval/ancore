@@ -36,6 +36,18 @@ This document provides a high-level overview of the Ancore system architecture.
                     Stellar Network
 ```
 
+## Financial OS Positioning
+
+Ancore is designed as a financial operating system on top of Stellar:
+
+- **Stellar (on-chain)**: settlement, assets, programmable transfer authorization
+- **Ancore apps/services (off-chain)**: UX, identity, analytics, compliance workflows, notifications, support tooling
+
+Decision rule:
+
+- If blockchain adds trust/settlement/interoperability value -> use Stellar.
+- If traditional software is faster/safer for user experience or operations -> keep it off-chain.
+
 ## Core Concepts
 
 ### Smart Accounts
