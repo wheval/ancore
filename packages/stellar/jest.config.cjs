@@ -7,7 +7,7 @@ module.exports = {
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },
-  setupFilesAfterFramework: ['<rootDir>/../../packages/jest.setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/../../packages/jest.setup.ts'],
   moduleNameMapper: {
     '^@ancore/types$': '<rootDir>/../types/src/index.ts',
     '^@ancore/types/(.*)$': '<rootDir>/../types/src/$1',

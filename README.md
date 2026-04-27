@@ -33,15 +33,11 @@ ancore/
 │   └── types/                # Shared TypeScript types
 │
 ├── contracts/                # Soroban smart contracts
-│   ├── account/              # Core account contract
-│   ├── validation-modules/   # Pluggable validation logic
-│   ├── invoice/              # Invoice system
-│   └── upgrade/              # Upgrade mechanisms
+│   └── account/              # Core account contract
 │
 ├── services/                 # Optional infrastructure
 │   ├── relayer/              # Transaction relay service
-│   ├── indexer/              # Blockchain indexer
-│   └── ai-agent/             # AI-powered financial agent
+│   └── indexer/              # Blockchain indexer
 │
 └── docs/                     # Documentation
     ├── architecture/         # System architecture
@@ -116,6 +112,7 @@ pnpm contracts:test
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+Please also review our [Code of Conduct](CODE_OF_CONDUCT.md) before engaging in community discussions.
 
 **Quick guidelines:**
 
@@ -173,10 +170,19 @@ For a deep dive into Ancore's architecture, see:
 
 ## Roadmap
 
+### In progress (active)
+
 - [x] Core account abstraction contracts
-- [x] Session key implementation
-- [ ] Browser extension wallet (v1)
-- [ ] Mobile wallet
+- [x] Session key primitives (contract + SDK foundation)
+- [x] Browser extension wallet foundation
+- [x] Web dashboard foundation
+- [ ] Production-ready relayer security path
+- [ ] Production-ready account contract hardening and audit
+- [ ] MVP release gate completion
+
+### Planned (post-MVP)
+
+- [ ] Mobile wallet productionization
 - [ ] Social recovery
 - [ ] Invoice system
 - [ ] AI agent integration

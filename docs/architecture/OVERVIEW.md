@@ -26,10 +26,10 @@ This document provides a high-level overview of the Ancore system architecture.
                          │
 ┌────────────────────────▼────────────────────────────────────┐
 │                  Stellar/Soroban Layer                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   Account    │  │  Validation  │  │   Invoice    │      │
-│  │   Contract   │  │   Modules    │  │   Contract   │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│  ┌──────────────┐                                            │
+│  │   Account    │                                            │
+│  │   Contract   │                                            │
+│  └──────────────┘                                            │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          │
@@ -173,4 +173,7 @@ Optional relayer network for:
 
 ---
 
-**Last Updated**: January 2026
+> Note: Additional contract modules (validation, invoice, etc.) remain planned
+> roadmap items and are not part of the current repository layout.
+
+**Last Updated**: April 2026

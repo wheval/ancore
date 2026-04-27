@@ -7,7 +7,7 @@ module.exports = {
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.test.json' }],
   },
-  setupFilesAfterFramework: ['<rootDir>/../../packages/jest.setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/../../packages/jest.setup.ts'],
   moduleNameMapper: {
     '^@ancore/account-abstraction$': '<rootDir>/../account-abstraction/src/index.ts',
     '^@ancore/account-abstraction/(.*)$': '<rootDir>/../account-abstraction/src/$1',
